@@ -1,0 +1,36 @@
+2019-07-10 20:19:02,314 - root - ERROR - <class 'NameError'>
+2019-07-10 20:58:50,985 - root - ERROR - <class 'NameError'>
+2019-07-10 20:59:01,938 - root - ERROR - <class 'AttributeError'>
+2019-07-10 20:59:47,476 - root - ERROR - <class 'AttributeError'>
+2019-07-10 20:59:54,702 - root - ERROR - <class 'AttributeError'>
+2019-07-10 21:00:06,398 - root - ERROR - <class 'AttributeError'>
+2019-07-10 21:01:45,001 - root - ERROR - CTP服务器，连接被拒绝（或者超时）
+2019-07-10 21:02:21,359 - root - ERROR - CTP服务器，连接被拒绝（或者超时）
+2019-07-10 21:02:52,508 - root - ERROR - CTP服务器，连接被拒绝（或者超时）
+2019-07-10 21:02:52,508 - root - ERROR - CTP服务器，连接被拒绝（或者超时）
+2019-07-10 21:02:52,509 - root - ERROR - CTP服务器，连接被拒绝（或者超时）
+2019-07-10 21:03:30,537 - root - ERROR - CTP服务器，连接被拒绝（或者超时）
+2019-07-10 21:06:28,781 - root - ERROR - 服务器，本地操作系统不支持请求的套接字操作（例如，缺乏IPv6支持）。
+2019-07-10 21:06:58,287 - root - ERROR - 服务器，本地操作系统不支持请求的套接字操作（例如，缺乏IPv6支持）。
+2019-07-10 21:08:06,895 - root - ERROR - 服务器，连接被拒绝（或者超时）
+2019-07-10 21:08:06,895 - root - ERROR - 服务器，连接被拒绝（或者超时）
+2019-07-10 21:08:06,896 - root - ERROR - 服务器，连接被拒绝（或者超时）
+2019-07-10 21:08:20,678 - root - ERROR - 服务器，本地操作系统不支持请求的套接字操作（例如，缺乏IPv6支持）。
+2019-07-10 21:15:08,558 - root - ERROR - <class 'AttributeError'>
+2019-07-10 21:16:21,044 - root - ERROR - 服务器，找不到主机地址
+2019-07-10 21:23:00,865 - root - ERROR - 服务器，找不到主机地址
+2019-07-10 21:23:12,819 - root - ERROR - 服务器，找不到主机地址
+2019-07-10 21:23:49,535 - root - ERROR - 服务器，找不到主机地址
+2019-07-10 21:27:33,128 - root - ERROR - 服务器，SSL / TLS握手失败，因此连接已关闭（仅在QSslSocket中使用）
+2019-07-10 21:27:46,878 - root - ERROR - 服务器，连接被拒绝（或者超时）
+2019-07-10 21:27:46,878 - root - ERROR - 服务器，连接被拒绝（或者超时）
+2019-07-10 21:27:46,879 - root - ERROR - 服务器，连接被拒绝（或者超时）
+2019-07-10 21:33:12,518 - root - ERROR - 服务器，本地操作系统不支持请求的套接字操作（例如，缺乏IPv6支持）。
+2019-07-10 21:40:39,301 - engineio.client - ERROR - requests package is not installed -- cannot send HTTP requests!
+2019-07-10 21:41:10,972 - engineio.client - ERROR - requests package is not installed -- cannot send HTTP requests!
+2019-07-10 21:46:35,777 - root - ERROR - <class 'AttributeError'>
+2019-07-10 21:47:04,650 - root - ERROR - 服务器，本地操作系统不支持请求的套接字操作（例如，缺乏IPv6支持）。
+2019-07-10 22:07:27,875 - root - ERROR - <class 'AttributeError'>
+2019-07-10 22:08:23,706 - root - ERROR - <class 'AttributeError'>
+2019-07-10 22:31:26,832 - root - ERROR - 服务器，本地操作系统不支持请求的套接字操作（例如，缺乏IPv6支持）。
+2019-07-10 22:31:46,257 - root - ERROR - 服务器，本地操作系统不支持请求的套接字操作（例如，缺乏IPv6支持）。
