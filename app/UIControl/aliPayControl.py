@@ -1,16 +1,94 @@
+import ast
 import json
 
-
+import selenium
 from PyQt5 import QtWebSockets
-from PyQt5.QtCore import pyqtSlot, QUrl
+from PyQt5.QtCore import pyqtSlot, QUrl, QObject, QThread, pyqtSignal
 from PyQt5.QtNetwork import QAbstractSocket, QTcpSocket
 from PyQt5.QtWebSockets import QWebSocket
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox
 from configobj import ConfigObj
-
+from selenium import webdriver
 from app.UIControl import logger
 from app.UIView.aliPayMainWindow import Ui_MainWindow
 from profile import profile
+
+
+class autoWork(QObject):
+    set_title_signal = pyqtSignal(str)
+    close_driver_signal = pyqtSignal()
+    start_work_signal = pyqtSignal(dict)
+    warn_signal = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super(autoWork, self).__init__(parent)
+        self.option = webdriver.ChromeOptions()
+        self.title = ""
+        self.option.add_argument('disable-infobars')
+        self.driver = webdriver.Chrome(profile.WEB_DRIVER_PATH, chrome_options=self.option)  #
+        self.driver.implicitly_wait(20)  # 所有的加载页面隐式等待20秒
+        self.set_title_signal.connect(self.on_set_title_signal)
+        self.close_driver_signal.connect(self.on_close_driver_signal)
+        self.start_work_signal.connect(self.on_start_work_signal)
+
+    def in_ali_login_page(self):
+        '''判断是否在阿里支付宝页面'''
+        return self.driver.current_url == profile.ALI_LOGIN_PATH
+
+    def ready_for_login(self):
+        if not self.in_ali_login_page():
+            logger.info("未登录的cookies" + str(self.driver.get_cookies()))
+            self.driver.get(profile.ALI_LOGIN_PATH)
+            self.driver.execute_script(f"document.title='{self.title}'")
+
+    @pyqtSlot(dict)
+    def on_start_work_signal(self, recv_json):
+        '''开始工作流程'''
+        # 判断是否还是在登录页面，如果还在提示用户登录
+        if self.in_ali_login_page():
+            self.warn_signal.emit()
+        else:
+            # TODO 开始工作流程
+            # 如果登陆后页面在 http://www.alipay.com下，需要选择（我是合作伙伴、我是上架用户、我是个人用户）
+            # 点击我是个人用户以后，点击进入我的支付宝
+            # 点击充值
+            # 选择充值到余额
+            #
+            if not self.driver.get_cookies():  # 如果cookies失效，重回到登录界面
+                self.driver.get(profile.ALI_LOGIN_PATH)
+            logger.info("已经登录的cookies" + str(self.driver.get_cookies()))
+            try:
+                print(self.driver.window_handles)
+                content_dict = ast.literal_eval(recv_json.get("content"))
+                self.click_work(content_dict.get("bankcode"), content_dict.get("money"))
+            except selenium.common.exceptions.NoSuchElementException as e:
+                logger.error("网速太慢，无法加载出网页，导致元素无法定位或者元素的class已经被修改" + str(e))
+
+    def click_work(self, bank_code, money):
+        self.driver.find_element_by_xpath("/html/body/div/div[2]/div[1]/div/div[2]/div/a[3]").click()  # 点击个人用户
+        self.driver.find_element_by_xpath("/html/body/div[1]/div[1]/div[1]/div/ul[2]/li[3]/a").click()  # 点击进入我的支付宝
+        self.driver.find_element_by_xpath("//*[@id='J-assets-balance']/div[1]/div/div[2]/ul/li[1]/a").click()  # 点击充值按钮
+        print(self.driver.window_handles)
+        self.driver.switch_to.window(self.driver.window_handles[1])
+        if self.driver.find_element_by_xpath("//*[@id='content']/div[1]/ul/li[1]/a"):
+            logger.info("已经选择了充值到余额")
+        else:
+            self.driver.find_element_by_xpath("//*[@id='container']/div[1]/ul/li[2]/a").click()  # 点击充值到余额,有可能已经点过了，那就不点了
+        href = self.driver.find_element_by_xpath("//*[@id='J-DEbank']/div/form/div[2]/div/ul/li/a").get_attribute("href")
+        self.driver.get(href)
+        self.driver.find_element_by_xpath(f"//input[@value='{bank_code}']").click() # 选择银行
+        # self.driver.execute_script(f"document.getElementById('{profile.BAND_CODE_IDget(bank_code)}').click()")
+        self.driver.find_element_by_xpath("//*[@id='bankCardForm']/div/input").click() # 选择下一步
+        self.driver.find_element_by_xpath("//*[@id='J-depositAmount']").send_keys(money)
+
+    @pyqtSlot()
+    def on_close_driver_signal(self):
+        self.driver.quit()
+
+    @pyqtSlot(str)
+    def on_set_title_signal(self, title):
+        print(f"document.title={title}")
+        self.driver.execute_script(f"document.title='{title}'")
 
 
 class aliPayControl(QMainWindow, Ui_MainWindow):
@@ -20,16 +98,25 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         self.show()
 
         self.config = ConfigObj(profile.CONFIG_INI_URL, encoding=profile.ENCODING)
-
         self.websocket = QWebSocket("", QtWebSockets.QWebSocketProtocol.Version13, None)  # 与直播服务器的连接
-        # self.websocket = QTcpSocket(self)
         self.websocket.connected.connect(self.on_connected)
         self.websocket.disconnected.connect(self.on_disconnected)
         self.websocket.textMessageReceived.connect(self.on_textMessageReceived)
-        # self.websocket.readyRead.connect(self.on_readyRead)
         self.websocket.error.connect(self.on_error)
         self.websocket.stateChanged.connect(self.on_stateChanged)
 
+        self.autoWork = autoWork()
+        self.autoWork.warn_signal.connect(self.on_warn_signal)
+        self.work_thread = QThread(self)
+
+    @pyqtSlot()
+    def on_warn_signal(self):
+        QMessageBox.warning(self, "错误", "请扫码登录支付宝")
+
+    def closeEvent(self, QCloseEvent):
+        self.autoWork.close_driver_signal.emit()
+        self.websocket.close()
+        QCloseEvent.accept()
 
     def send_to_websocket(self, data: dict):
         '''向CTP服务器发送数据'''
@@ -48,12 +135,17 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
     @pyqtSlot(str)
     def on_textMessageReceived(self, message: str):
         '''直播服务器收到数据'''
-        recv_data = json.loads(message)
-        logger.info("收到直播服务器数据" + str(recv_data))
-        # try:
-        #     getattr(self, purpose + "_signal").emit(recv_data)
-        # except AttributeError as e:
-        #     logger.error("收到服务器未知含义的包")
+
+        logger.info("接收服务器消息" + str(message))
+        if message.startswith("0"):
+            logger.info("engine.io is OPENED")
+            logger.info(json.loads(message[1:]))
+        elif message == "40":
+            pass
+        elif message.startswith("42"):
+            msg = json.loads(ast.literal_eval(message[2:])[1])
+            logger.info("接收服务器有效数据包" + str(msg))
+            self.autoWork.start_work_signal.emit(msg)
 
     @pyqtSlot(QAbstractSocket.SocketError)
     def on_error(self, error_code):
@@ -129,7 +221,6 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         elif error_code == -1:
             logger.error("服务器，发生了一个未识别的错误。")
 
-
     @pyqtSlot(QAbstractSocket.SocketState)
     def on_stateChanged(self, state_code):
         '''内网服务器状态码'''
@@ -161,15 +252,24 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def on_start_pushButton_clicked(self):
         '''开始'''
-        key_name = self.key_name_lineEdit.text()
-        token_value = self.token_value_lineEdit.text()
-        if not key_name or  not token_value:
-            QMessageBox.warning(self, "错误", "请输入")
-            return
-        address = f"http://{self.config['SOCKET']['IP']}:{self.config['SOCKET']['PORT']}/?token={token_value}"
-        print(address)
-        self.websocket.open(QUrl(address))
-        #
-        # self.websocket.connectToHost(address,
-        #                            QTcpSocket.ReadWrite)
-        # 建立连接
+        if not self.work_thread.isRunning():
+            key_name = self.key_name_lineEdit.text()
+            token_value = self.token_value_lineEdit.text()
+            if not key_name or not token_value:
+                QMessageBox.warning(self, "错误", "请输入")
+                return
+            address = f"ws://{self.config['SOCKET']['IP']}:{self.config['SOCKET']['PORT']}/socket.io/?EIO=3&transport=websocket&token={token_value}"
+            logger.info(f"尝试与{address}建立连接")
+            self.websocket.open(QUrl(address))  # 建立连接
+            self.autoWork.title = key_name
+            self.autoWork.moveToThread(self.work_thread)
+            self.work_thread.started.connect(self.autoWork.ready_for_login)
+            self.work_thread.start()
+            self.token_value_lineEdit.setEnabled(False)
+            # self.start_pushButton.setEnabled(False)
+
+    @pyqtSlot()
+    def on_set_title_pushButton_clicked(self):
+        '''设置页面title'''
+
+        self.autoWork.set_title_signal.emit(self.key_name_lineEdit.text())
