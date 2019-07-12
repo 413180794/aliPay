@@ -87,7 +87,7 @@ class autoWork(QObject):
 
     @pyqtSlot(str)
     def on_set_title_signal(self, title):
-        print(f"document.title={title}")
+
         self.driver.execute_script(f"document.title='{title}'")
 
 
@@ -96,7 +96,6 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         super(aliPayControl, self).__init__()
         self.setupUi(self)
         self.show()
-
         self.config = ConfigObj(profile.CONFIG_INI_URL, encoding=profile.ENCODING)
         self.websocket = QWebSocket("", QtWebSockets.QWebSocketProtocol.Version13, None)  # 与直播服务器的连接
         self.websocket.connected.connect(self.on_connected)
