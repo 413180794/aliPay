@@ -4,11 +4,16 @@ import json
 import selenium
 from PyQt5 import QtWebSockets
 from PyQt5.QtCore import pyqtSlot, QUrl, QObject, QThread, pyqtSignal
-from PyQt5.QtNetwork import QAbstractSocket, QTcpSocket
+from PyQt5.QtNetwork import QAbstractSocket
 from PyQt5.QtWebSockets import QWebSocket
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QMessageBox
 from configobj import ConfigObj
 from selenium import webdriver
+from selenium.webdriver.common.alert import Alert
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support.wait import WebDriverWait
+
+from seleniumrequests import Chrome
 from app.UIControl import logger
 from app.UIView.aliPayMainWindow import Ui_MainWindow
 from profile import profile
@@ -23,10 +28,15 @@ class autoWork(QObject):
     def __init__(self, parent=None):
         super(autoWork, self).__init__(parent)
         self.option = webdriver.ChromeOptions()
+
         self.title = ""
         self.option.add_argument('disable-infobars')
-        self.driver = webdriver.Chrome(profile.WEB_DRIVER_PATH, chrome_options=self.option)  #
-        self.driver.implicitly_wait(20)  # 所有的加载页面隐式等待20秒
+
+        self.option.add_experimental_option("excludeSwitches", ['enable-automation'])
+
+        # self.driver = webdriver.Chrome(profile.WEB_DRIVER_PATH, chrome_options=self.option)  #
+        self.driver = Chrome(chrome_options=self.option, executable_path=profile.WEB_DRIVER_PATH)
+        self.driver.implicitly_wait(5)  # 所有的加载页面隐式等待20秒
         self.set_title_signal.connect(self.on_set_title_signal)
         self.close_driver_signal.connect(self.on_close_driver_signal)
         self.start_work_signal.connect(self.on_start_work_signal)
@@ -73,13 +83,59 @@ class autoWork(QObject):
         if self.driver.find_element_by_xpath("//*[@id='content']/div[1]/ul/li[1]/a"):
             logger.info("已经选择了充值到余额")
         else:
-            self.driver.find_element_by_xpath("//*[@id='container']/div[1]/ul/li[2]/a").click()  # 点击充值到余额,有可能已经点过了，那就不点了
-        href = self.driver.find_element_by_xpath("//*[@id='J-DEbank']/div/form/div[2]/div/ul/li/a").get_attribute("href")
+            self.driver.find_element_by_xpath(
+                "//*[@id='container']/div[1]/ul/li[2]/a").click()  # 点击充值到余额,有可能已经点过了，那就不点了
+        href = self.driver.find_element_by_xpath("//*[@id='J-DEbank']/div/form/div[2]/div/ul/li/a").get_attribute(
+            "href")
         self.driver.get(href)
-        self.driver.find_element_by_xpath(f"//input[@value='{bank_code}']").click() # 选择银行
-        # self.driver.execute_script(f"document.getElementById('{profile.BAND_CODE_IDget(bank_code)}').click()")
-        self.driver.find_element_by_xpath("//*[@id='bankCardForm']/div/input").click() # 选择下一步
+        self.driver.find_element_by_xpath(f"//input[@value='{bank_code}']").click()  # 选择银行
+        # self.driver.execute_script(f"document.getElementById('{profile.BAND_CODE_ID.get(bank_code)}').click()")
+        self.driver.find_element_by_xpath("//*[@id='bankCardForm']/div/input").click()  # 选择下一步
         self.driver.find_element_by_xpath("//*[@id='J-depositAmount']").send_keys(money)
+        self.driver.find_element_by_xpath("//*[@id='J-depositAmount']").click()
+        self.driver.execute_script("window.onbeforeunload = function() { return 'NUL'; }")
+        self.driver.find_element_by_xpath('//input[@id="J-deposit-submit"]').click()  # 点击登录到网上银行
+
+        wait = WebDriverWait(self.driver, 5)
+        alert = wait.until(expected_conditions.alert_is_present())
+        if alert:
+            alert.dismiss()
+        ua = self.driver.find_element_by_xpath("//*[@id='UA_InputId']").get_attribute("value")
+        self.driver.refresh()
+        alert = wait.until(expected_conditions.alert_is_present())
+        if alert:
+            alert.accept()
+        orderId = self.driver.find_element_by_xpath("//*[@id='orderId']").get_attribute("value")  # 拿到orderId
+        form_token = self.driver.find_element_by_xpath('//*[@id="ebankDepositForm"]/input[1]').get_attribute("value")
+        securityId = self.driver.find_element_by_xpath("//*[@id='securityId']").get_attribute("value")  # 拿到securityId
+
+        # response  = self.driver.request("POST","https://cashiersu18.alipay.com/standard/deposit/depositAmountValidate.json",data={
+        #     "_input_charset": "utf - 8",
+        #     "orderId":orderId,
+        #     "securityId":securityId,
+        #     "depositAmount":float(money),
+        #     "depositType":"newAmount",
+        #     "channelType":channelType,
+        #     "ua":ua,
+        #
+        # })
+
+        ctoken = self.driver.get_cookie("ctoken")
+        data = {
+            "_form_token": form_token,
+            "orderId": orderId,
+            "securityId": securityId,
+            "depositAmount": float(money),
+            "depositType": "hasAmount",
+            "ua": ua,
+            "_input_charset": "utf-8",
+            "ctoken": ctoken.get("value")
+        }
+        print(data)
+        response = self.driver.request("POST", "https://cashiersu18.alipay.com/standard/gateway/ebankDeposit.json",
+                                       data=data
+                                       )
+        print(response.text)
 
     @pyqtSlot()
     def on_close_driver_signal(self):
@@ -103,7 +159,6 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         self.websocket.textMessageReceived.connect(self.on_textMessageReceived)
         self.websocket.error.connect(self.on_error)
         self.websocket.stateChanged.connect(self.on_stateChanged)
-
         self.autoWork = autoWork()
         self.autoWork.warn_signal.connect(self.on_warn_signal)
         self.work_thread = QThread(self)
