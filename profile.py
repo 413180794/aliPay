@@ -1,6 +1,7 @@
 import os
+import sys
 
-basedir = os.path.abspath(os.path.dirname(__file__))  #
+basedir = os.path.dirname(sys.executable) if hasattr(sys,"frozen") else os.path.abspath(os.path.dirname(__file__))  # D:\Code\PythonCode\transactionReview ����Ŀ�ľ���·��
 
 
 class Profile:
@@ -10,9 +11,14 @@ class Profile:
     ERROR_LOG_URL = os.path.join(LOG_FILE_URL, "errors.log")
     UI_QSS_URL = os.path.join(basedir, "static", "style", "ui.qss")
     CONFIG_INI_URL = os.path.join(basedir, "static", "config", "config.ini")
-    WEB_DRIVER_PATH = os.path.join(basedir, "static", "webDriver", "chromedriver")
-    ALI_LOGIN_PATH = "https://auth.alipay.com/login/index.htm?goto=https%3A%2F%2Fwww.alipay.com%2F"
+    WEB_DRIVER_PATH = os.path.join(basedir, "static", "webDriver", "chromedriver.exe")
+    ALI_LOGIN_PATH = "https://auth.alipay.com/login/index.htm?goto=https%3A%2F%2Fmy.alipay.com%2Fportal%2Fi.htm"
     ENCODING = "utf-8"
+    QT_BIN_URL = os.path.join(basedir, r"venv\Lib\site-packages\PyQt5\Qt\bin")
+    QT_PLUGINS_URL = os.path.join(basedir, r"venv\Lib\site-packages\PyQt5\Qt\plugins")
+
+    EXE_URL = os.path.join(basedir, "dist","manage.exe")
+    NEW_EXE_URL = os.path.join(basedir, "manage.exe")
     DECODING = ENCODING
     BAND_CODE_ID = {
         'ABCabc101_DEPOSIT_DEBIT_EBANK_XBOX_MODEL': "J-b2c_ebank-abc101-3",
