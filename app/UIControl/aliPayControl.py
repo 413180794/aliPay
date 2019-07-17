@@ -64,6 +64,7 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         self.option = webdriver.ChromeOptions()
         self.title = ""
         self.option.add_argument('disable-infobars')
+        self.option.add_argument('--log-level=3')
         self.option.add_experimental_option("excludeSwitches", ['enable-automation'])
         self.driver = Chrome(chrome_options=self.option, executable_path=profile.WEB_DRIVER_PATH)
         self.driver.implicitly_wait(2)  # 所有的加载页面隐式等待20秒
@@ -74,6 +75,16 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         self.flash_timer = QTimer(self)
         self.flash_timer.timeout.connect(self.on_flash_timer)
         self.flash_timer.setInterval(int(self.config['INTERVAL'])*1000)
+        self.ping_timer = QTimer(self)
+        self.ping_timer.timeout.connect(self.on_ping_timer)
+
+        self.ping_timer.setInterval(20 * 1000)
+
+    @pyqtSlot()
+    def on_ping_timer(self):
+        if self.websocket.isValid():
+            self.websocket.sendBinaryMessage(b"2")
+
     @pyqtSlot()
     def on_flash_timer(self):
         # 定时刷新订单页面
@@ -85,8 +96,14 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
                 self.driver.get("https://my.alipay.com/portal/i.htm")  # 操作完一边 回到用户主页
             if str(self.driver.current_url) == "https://consumeprod.alipay.com/record/standard.htm":
                 self.driver.refresh()
+                with open(profile.WORK_JS,"r") as f:
+
+                    self.driver.execute_script("".join(f.readlines()))
             if str(self.driver.current_url).startswith("https://consumeprod.alipay.com/errorSecurity.htm"):
                 self.driver.get("https://consumeprod.alipay.com/record/standard.htm")
+
+            if str(self.driver.current_url).startswith("https://consumeprod.alipay.com/record/checkSecurity.htm"):
+                QMessageBox.warning(self,"错误","被检测出非用户操作，请按要求登录")
             self.delayMsec(5*1000)
             ## TODO 安全检查
         if self.driver.current_window_handle != original_window_handle:
@@ -99,17 +116,19 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
 
     def retries(func):
         # 类中定义一个重试的装饰器
-        logger.info("启用重试器")
+
 
         @functools.wraps(func)
         def warpper(self, *args, **kwargs):
             for i in range(self.time + 1):
+
                 try:
                     result = func(self, *args, **kwargs)
                 except self.exception as e:
+                    logger.info("启用重试器")
                     logger.error(str(func))
                     logger.error(e)
-                    time.sleep(self.wait_time)
+                    self.delayMsec(5*1000)
                     continue
                 else:
                     return result
@@ -252,10 +271,8 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
             if alert:
                 alert.dismiss()
             ua = self.get_ua()
+            self.driver.execute_script("window.onbeforeunload = function() { return null; }")
             self.driver.refresh()  # 刷新
-            alert = wait.until(expected_conditions.alert_is_present())
-            if alert:
-                alert.accept()
             orderId = self.get_order_id()  # 拿到orderId
             form_token = self.get_form_token()
             securityId = self.get_securityId()  # 拿到securityId
@@ -441,7 +458,7 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
     def on_connected(self):
         '''与服务器连接上以后，判断一下使用的是不是本地服务器'''
         logger.info("与服务器建立连接")
-
+        self.ping_timer.start()
     @pyqtSlot()
     def on_start_pushButton_clicked(self):
         '''开始'''
@@ -461,5 +478,5 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
     def on_set_title_pushButton_clicked(self):
         '''设置页面title'''
         # self.set_title_signal.emit(self.key_name_lineEdit.text())
-        # self.send_to_websocket({"form": "asdf","to":"123","content":"sdfa"})
+        self.send_to_websocket({"form": "asdf","to":"123","content":"sdfa"})
         # self.start_work_signal.emit({'type': 1, 'id': 'rIAJVOSwtDCKhuJZBOOP', 'content': '{"money":"200","type":"alibank","mark":"TEST2444099","bankcode":"CCBccb103_DEPOSIT_DEBIT_EBANK_XBOX_MODEL"}'})

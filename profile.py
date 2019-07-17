@@ -20,6 +20,7 @@ class Profile:
     EXE_URL = os.path.join(basedir, "dist","manage.exe")
     NEW_EXE_URL = os.path.join(basedir, "manage.exe")
     DECODING = ENCODING
+    WORK_JS = os.path.join(basedir,"static","work.js")
     BAND_CODE_ID = {
         'ABCabc101_DEPOSIT_DEBIT_EBANK_XBOX_MODEL': "J-b2c_ebank-abc101-3",
         'ABCabcnucc104_DEPOSIT_DEBIT_EBANK_XBOX_MODEL': "J-b2b_ebank-abcnucc104-31",
@@ -112,3 +113,4 @@ class Profile:
 
 
 profile = Profile
+
