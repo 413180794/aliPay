@@ -13,6 +13,14 @@ class Profile:
     CONFIG_INI_URL = os.path.join(basedir, "static", "config", "config.ini")
     WEB_DRIVER_PATH = os.path.join(basedir, "static", "webDriver", "chromedriver.exe")
     ALI_LOGIN_PATH = "https://auth.alipay.com/login/index.htm?goto=https%3A%2F%2Fmy.alipay.com%2Fportal%2Fi.htm"
+
+
+    ORDER_PAGE_PATH = "https://consumeprod.alipay.com/record/advanced.htm"
+    ERROR_LOGIN_PATH = "https://consumeprod.alipay.com/record/checkSecurity.htm"
+    WAIT_PAGE_PATH = "https://render.alipay.com/p/s/alipay_site/wait"
+    MAIN_PATH_PATH = "https://my.alipay.com/portal/i.htm"
+
+
     ENCODING = "utf-8"
     QT_BIN_URL = os.path.join(basedir, r"venv\Lib\site-packages\PyQt5\Qt\bin")
     QT_PLUGINS_URL = os.path.join(basedir, r"venv\Lib\site-packages\PyQt5\Qt\plugins")

@@ -88,18 +88,18 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         original_window_handle = self.driver.current_window_handle  # 拿到当前的窗口句柄
         for hande in self.driver.window_handles:
             self.driver.switch_to.window(hande)
-            if self.driver.current_url == "https://render.alipay.com/p/s/alipay_site/wait":
-                self.driver.get("https://my.alipay.com/portal/i.htm")  # 操作完一边 回到用户主页
-            if str(self.driver.current_url) == "https://consumeprod.alipay.com/record/advanced.htm":
+            if self.driver.current_url == profile.WAIT_PAGE_PATH:
+                self.driver.get(profile.MAIN_PATH_PATH)  # 操作完一边 回到用户主页
+            if str(self.driver.current_url) == profile.ORDER_PAGE_PATH:
                 self.driver.refresh()
                 with open(profile.WORK_JS,"r") as f:
 
                     self.driver.execute_script("".join(f.readlines()))
             if str(self.driver.current_url).startswith("https://consumeprod.alipay.com/errorSecurity.htm"):
-                self.driver.get("https://consumeprod.alipay.com/record/standard.htm")
+                self.driver.get(profile.ORDER_PAGE_PATH)
 
-            if str(self.driver.current_url).startswith("https://consumeprod.alipay.com/record/checkSecurity.htm"):
-                QMessageBox.warning(self,"错误","被检测出非用户操作，请按要求登录")
+            if str(self.driver.current_url).startswith(profile.ERROR_LOGIN_PATH):
+                QMessageBox.warning(self,"错误","检测到需要用户登录，请按要求登录")
             self.delayMsec(5*1000)
             ## TODO 安全检查
         if self.driver.current_window_handle != original_window_handle:
@@ -212,18 +212,17 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         if self.in_ali_login_page():  # 每次任务开始前都要检查自己是不是在登陆页面，如果在登录界面，则直接提示用户登录，并结束本次流程
             QMessageBox.warning(self, "错误", "请登录支付宝")
             return
-
-        if self.driver.current_url == "https://my.alipay.com/portal/i.htm":  # 如果在登录后的主页中，下一步期待进入充值页面
+        if self.driver.current_url == profile.WAIT_PAGE_PATH:
+            self.driver.get(profile.MAIN_PATH_PATH)
+        if self.driver.current_url == profile.MAIN_PATH_PATH:  # 如果在登录后的主页中，下一步期待进入充值页面
             self.driver.execute_script(f"document.title='{self.key_name_lineEdit.text()}'")
             # self.driver.find_element_by_xpath("//*[@id='J-assets-balance']/div[1]/div/div[2]/ul/li[1]/a").click()  # 点击充值按钮
             logger.info("当前在个人用户主页:" + str(self.driver.current_url))
 
             if len(self.driver.window_handles) == 1:
                 original_window_handle = self.driver.current_window_handle  # 拿到当前的窗口句柄
-                print(self.driver.current_window_handle)
-                self.driver.execute_script("window.open('https://consumeprod.alipay.com/record/advanced.htm');")
-                QMessageBox.warning(self,"请登录","请登录后才点击确定")
-                print(self.driver.current_window_handle)
+
+                self.driver.execute_script(f"window.open('{profile.ORDER_PAGE_PATH}');")
 
                 self.driver.switch_to.window(original_window_handle)  # 并切回来
                 self.flash_timer.start()
