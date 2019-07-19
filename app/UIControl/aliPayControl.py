@@ -90,7 +90,7 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
             self.driver.switch_to.window(hande)
             if self.driver.current_url == "https://render.alipay.com/p/s/alipay_site/wait":
                 self.driver.get("https://my.alipay.com/portal/i.htm")  # 操作完一边 回到用户主页
-            if str(self.driver.current_url) == "https://consumeprod.alipay.com/record/standard.htm":
+            if str(self.driver.current_url) == "https://consumeprod.alipay.com/record/advanced.htm":
                 self.driver.refresh()
                 with open(profile.WORK_JS,"r") as f:
 
@@ -221,7 +221,7 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
             if len(self.driver.window_handles) == 1:
                 original_window_handle = self.driver.current_window_handle  # 拿到当前的窗口句柄
                 print(self.driver.current_window_handle)
-                self.driver.execute_script("window.open('https://consumeprod.alipay.com/record/standard.htm');")
+                self.driver.execute_script("window.open('https://consumeprod.alipay.com/record/advanced.htm');")
                 QMessageBox.warning(self,"请登录","请登录后才点击确定")
                 print(self.driver.current_window_handle)
 
