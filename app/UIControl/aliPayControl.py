@@ -1,31 +1,27 @@
 import ast
 import functools
 import json
-import time
 from collections import OrderedDict
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
-import selenium
 from PyQt5 import QtWebSockets
-from PyQt5.QtCore import pyqtSlot, QUrl, QObject, QThread, pyqtSignal, QTimer, QTime
+from PyQt5.QtCore import pyqtSlot, QUrl, pyqtSignal, QTimer, QTime
 from PyQt5.QtNetwork import QAbstractSocket
 from PyQt5.QtWebSockets import QWebSocket
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QApplication
 from configobj import ConfigObj
 from engineio.packet import MESSAGE
 from selenium import webdriver
-from selenium.webdriver.common import keys
-from selenium.webdriver.common.keys import Keys
+
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from socketio.packet import EVENT
-
-from app.engineio.packet import EngineIoPacket
-from app.seleniumrequests import Chrome
+from app.tools.engineio.packet import EngineIoPacket
+from app.tools.seleniumrequests import Chrome
 from app.UIControl import logger
 from app.UIView.aliPayMainWindow import Ui_MainWindow
-from app.socketio.packet import SocketIoPacket
+from app.tools.socketio.packet import SocketIoPacket
 from profile import profile
 
 
@@ -70,7 +66,7 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         self.driver.implicitly_wait(2)  # 所有的加载页面隐式等待20秒
 
         self.time = 2
-        self.wait_time = 0.3
+        self.wait_time = 5
         self.exception = (Exception,)
         self.flash_timer = QTimer(self)
         self.flash_timer.timeout.connect(self.on_flash_timer)
@@ -141,11 +137,7 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         '''判断是否在阿里支付宝登录页面'''
         return self.driver.current_url == profile.ALI_LOGIN_PATH
 
-    def ready_for_login(self):
-        if not self.in_ali_login_page():
-            logger.info("未登录的cookies" + str(self.driver.get_cookies()))
-            self.driver.get(profile.ALI_LOGIN_PATH)
-            self.driver.execute_script(f"document.title='{self.title}'")
+
 
     @pyqtSlot(dict)
     def on_start_work_signal(self, recv_json):
@@ -194,10 +186,6 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         # 点击登陆到网上银行
         self.driver.find_element_by_xpath('//input[@id="J-deposit-submit"]').click()
 
-    @retries
-    def click_input_widget(self):
-        # 点一下填写的框，发送一个json文件
-        self.driver.find_element_by_xpath("//*[@id='J-depositAmount']").click()
 
     @retries
     def get_ua(self):
@@ -226,6 +214,7 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
             return
 
         if self.driver.current_url == "https://my.alipay.com/portal/i.htm":  # 如果在登录后的主页中，下一步期待进入充值页面
+            self.driver.execute_script(f"document.title='{self.key_name_lineEdit.text()}'")
             # self.driver.find_element_by_xpath("//*[@id='J-assets-balance']/div[1]/div/div[2]/ul/li[1]/a").click()  # 点击充值按钮
             logger.info("当前在个人用户主页:" + str(self.driver.current_url))
 
@@ -242,6 +231,7 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
 
         if str(self.driver.current_url).startswith("https://cashiersu18.alipay.com/standard/deposit/cashier.htm"):
             logger.info("当前在支付宝充值主页是:" + str(self.driver.current_url))
+            self.driver.execute_script(f"document.title='{self.key_name_lineEdit.text()}'")
             try:
                 self.driver.find_element_by_xpath("//*[@id='content']/div[1]/ul/li[1]/a")
                 # 尝试获取这个元素，如果获取到了，则说明已经选择了充实到余额
@@ -254,6 +244,7 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
 
         if str(self.driver.current_url).startswith("https://cashiersu18.alipay.com/standard/deposit/chooseBank.htm"):
             logger.info("当前在选择银行主页:" + str(self.driver.current_url))
+            self.driver.execute_script(f"document.title='{self.key_name_lineEdit.text()}'")
             self.chose_bank(bank_code)  # 选择银行
             # self.driver.execute_script(f"document.getElementById('{profile.BAND_CODE_ID.get(bank_code)}').click()")
             self.click_chose_bank_button()  # 选择下一步
@@ -261,8 +252,8 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
         if str(self.driver.current_url).startswith("https://cashiersu18.alipay.com/standard/gateway/ebankDeposit.htm"):
             # 在这个页面操作完了，一定要回到登录后的主页页面 https://my.alipay.com/portal/i.htm
             logger.info("当前在充值金额页面")
+            self.driver.execute_script(f"document.title='{self.key_name_lineEdit.text()}'")
             self.input_money(money)  # 填写金额
-            self.click_input_widget()  # 点一下填写框
             self.driver.execute_script("window.onbeforeunload = function() { return 'NUL'; }")
             self.click_submit()  # 点击登录到网上银行
 
@@ -309,6 +300,7 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
                 "bankCode": bank_code
             })
             self.driver.get("https://my.alipay.com/portal/i.htm")  # 操作完一边 回到用户主页
+            self.driver.execute_script(f"document.title='{self.key_name_lineEdit.text()}'")
 
     @pyqtSlot()
     def on_close_driver_signal(self):
@@ -473,10 +465,9 @@ class aliPayControl(QMainWindow, Ui_MainWindow):
             self.websocket.open(QUrl(address))  # 建立连接
             self.title = key_name
             self.driver.get(profile.ALI_LOGIN_PATH)
+            self.driver.execute_script(f"document.title='{self.key_name_lineEdit.text()}'")
 
     @pyqtSlot()
     def on_set_title_pushButton_clicked(self):
         '''设置页面title'''
-        # self.set_title_signal.emit(self.key_name_lineEdit.text())
-        self.send_to_websocket({"form": "asdf","to":"123","content":"sdfa"})
-        # self.start_work_signal.emit({'type': 1, 'id': 'rIAJVOSwtDCKhuJZBOOP', 'content': '{"money":"200","type":"alibank","mark":"TEST2444099","bankcode":"CCBccb103_DEPOSIT_DEBIT_EBANK_XBOX_MODEL"}'})
+        self.driver.execute_script(f"document.title='{self.key_name_lineEdit.text()}'")

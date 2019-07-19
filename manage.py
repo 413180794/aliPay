@@ -18,7 +18,6 @@ def my_exception_hook(exctype, value, traceback):
     sys._excepthook(exctype, value, traceback)
     sys.exit(1)
 
-
 # Set the exception hook to our wrapping function
 sys.excepthook = my_exception_hook
 if __name__ == '__main__':
